@@ -85,6 +85,40 @@ npm run preview -w client -- --mode browser   # serve the built client/dist
 
 The same route code powers both modes: in the static build, `server/src/routes/*` is bundled into the app with its storage and Git layers swapped for browser implementations (`client/src/local/`).
 
+## Uploading changes (folder or .zip)
+
+In **Repos ▸ Files**, click **Upload changes** (or drag & drop onto the dialog). You can pick a **folder**, individual **files**, or a **.zip** (a single top-level folder, like GitHub's "Download ZIP", is stripped automatically; `.git`, `node_modules` and OS junk files are skipped).
+
+The upload is compared with the stored source by Git blob hash and shown as a preview: **added**, **modified**, **unchanged**. Uploads are merged as an **overlay** — only added/changed files are committed, and files that aren't in the upload are left untouched (nothing is deleted). Commit straight to the branch, or to a new branch with a pull request.
+
+## Deploying to Azure App Service
+
+Each repo has a **Deployments** page (and a **Deploy to Azure** button in the repo header):
+
+1. **Sign in with Microsoft** (popup) — uses your own Azure permissions.
+2. Pick the **directory** (if you have several), **subscription**, **resource group** and **App Service**.
+3. Pick the **branch** and whether to **build on Azure** (sets `SCM_DO_BUILD_DURING_DEPLOYMENT=true` so App Service runs `npm install`/`pip install` etc.).
+4. **Deploy** — progress streams into the dialog; every deployment is recorded with its log, and the last target is remembered for one-click **Redeploy**.
+
+How the package reaches Azure (App Service's deployment endpoint doesn't accept calls straight from a browser):
+
+| Mode | How it deploys |
+|------|----------------|
+| Server (`npm run dev` / `npm start`) | The browser hands the server your Azure token; the server zips the branch with `git archive` and pushes it to the app's Kudu **zipdeploy** API, then polls until it finishes. The token is only kept in memory for that job. |
+| GitHub Pages | The browser uploads the zip to a **staging storage account** in the same resource group (pick one, or one is created automatically, and CORS is enabled for your Pages origin), then calls ARM **OneDeploy** so App Service pulls the package. The staged blob is deleted afterwards. |
+
+Your account needs **Contributor** (or Website Contributor + Storage Account Contributor for the Pages path) on the resources.
+
+### One-time: app registration for sign-in
+
+1. Azure portal ▸ **Microsoft Entra ID ▸ App registrations ▸ New registration**.
+2. Account types: *Accounts in any organizational directory* (or single tenant).
+3. Redirect URI — platform **Single-page application (SPA)**:
+   - local/server mode: `http://localhost:4000/redirect.html` (and `http://localhost:5173/redirect.html` for `npm run dev`)
+   - GitHub Pages: `https://<user>.github.io/<repo>/redirect.html`
+4. **API permissions ▸ Add ▸ Azure Service Management ▸ user_impersonation** (delegated).
+5. Copy the **Application (client) ID**. Either paste it into the Deploy dialog the first time (stored in that browser), or bake it into builds with `VITE_AZURE_CLIENT_ID` (and optionally `VITE_AZURE_TENANT`) — e.g. as GitHub Actions variables passed to `npm run build:pages`.
+
 ## Using Git (server mode)
 
 Each repo shows its clone URL (Clone button), e.g.

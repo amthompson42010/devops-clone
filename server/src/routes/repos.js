@@ -102,6 +102,14 @@ r.get('/:repo/raw', async (req, res) => {
   res.send(buf);
 });
 
+r.get('/:repo/tree-flat', async (req, res) => {
+  res.json(await READ(req, async (dir) => {
+    if (await ops.isEmpty(dir)) return { ref: null, files: {} };
+    const ref = req.query.ref || (await ops.defaultBranch(dir));
+    return { ref, files: await ops.flatTree(dir, ref) };
+  }));
+});
+
 r.get('/:repo/archive', async (req, res) => {
   let ref;
   const buf = await READ(req, async (dir) => {

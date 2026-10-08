@@ -50,6 +50,11 @@ export default function RepoLayout() {
         </Menu>
         <div className="push" />
         {!r.empty && (
+          <button className="btn" onClick={() => nav(`/${project.key}/repos/${encodeURIComponent(r.name)}/deployments?deploy=1`)}>
+            <Icon name="upload" /> Deploy to Azure
+          </button>
+        )}
+        {!r.empty && (
           <button
             className="btn"
             title="Download the default branch as a .zip"

@@ -1,13 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate, useOutletContext, useSearchParams } from 'react-router-dom';
 import { api, q, repoApi, saveBlob } from '../../api.js';
-import { zipToChanges } from '../../zip.js';
 import { useAsync, timeAgo, fmtSize, shortSha } from '../../util.js';
 import { Spinner, ErrorBox, Tabs, Menu, MenuItem, useToast, Avatar } from '../../components/ui.jsx';
 import { Markdown } from '../../components/RichText.jsx';
 import Icon from '../../components/Icon.jsx';
 import { BranchPicker, PathCrumbs, CodeView, EmptyRepo } from './repoBits.jsx';
 import CommitDialog from './CommitDialog.jsx';
+import UploadChanges from './UploadChanges.jsx';
 
 const IMG = /\.(png|jpe?g|gif|webp|ico|bmp)$/i;
 
@@ -22,8 +22,7 @@ export default function Files() {
   const items = useAsync(() => (repo.empty ? null : api.get(`${base}/items${q({ ref, path })}`)), [base, ref, path, repo.empty]);
   const [tab, setTab] = useState('contents');
   const [pendingUpload, setPendingUpload] = useState(null);
-  const fileInput = useRef(null);
-  const zipInput = useRef(null);
+  const [uploading, setUploading] = useState(false);
 
   const linkFor = (p, r = ref) => `?${new URLSearchParams({ ...(r !== repo.defaultBranch ? { ref: r } : {}), ...(p ? { path: p } : {}) })}`;
   const setRef = (r) => setSp(Object.fromEntries(Object.entries({ ref: r === repo.defaultBranch ? '' : r, path }).filter(([, v]) => v)));
@@ -35,32 +34,20 @@ export default function Files() {
         reloadRepo();
       } catch (e) { toast(e, 'error'); }
     };
-    const importZip = async (file) => {
-      try {
-        const changes = await zipToChanges(file);
-        if (!changes.length) throw new Error('The archive is empty');
-        await api.post(`${base}/commits`, { branch: repo.defaultBranch || 'main', message: `Import ${file.name}`, changes });
-        toast(`Imported ${changes.length} files`);
-        reloadRepo();
-      } catch (e) { toast(e, 'error'); }
-    };
-    return <main className="page"><EmptyRepo repo={repo} onInit={init} onImportZip={importZip} /></main>;
+    return (
+      <main className="page">
+        <EmptyRepo repo={repo} onInit={init} onUpload={() => setUploading(true)} />
+        {uploading && (
+          <UploadChanges repo={repo} branch={repo.defaultBranch || 'main'} onClose={() => setUploading(false)}
+            onCommitted={() => { setUploading(false); reloadRepo(); }} />
+        )}
+      </main>
+    );
   }
 
   const data = items.data;
   const isFile = data?.type === 'blob';
   const dir = isFile ? path.split('/').slice(0, -1).join('/') : path;
-
-  const onUpload = async (fileList) => {
-    const files = [...fileList];
-    if (!files.length) return;
-    const changes = await Promise.all(files.map((f) => new Promise((resolve) => {
-      const r = new FileReader();
-      r.onload = () => resolve({ path: dir ? `${dir}/${f.name}` : f.name, content: String(r.result).split(',')[1] || '', encoding: 'base64' });
-      r.readAsDataURL(f);
-    })));
-    setPendingUpload(changes);
-  };
 
   return (
     <main className="page repo-page">
@@ -71,10 +58,10 @@ export default function Files() {
         {!isFile && (
           <Menu align="right" trigger={(o, t) => <button className="btn" onClick={t}><Icon name="plus" /> New <Icon name="chevronDown" /></button>}>
             <MenuItem icon="file" onClick={() => nav(`../edit${q({ ref, path: dir, new: 1 })}`)}>New file</MenuItem>
-            <MenuItem icon="upload" onClick={() => fileInput.current?.click()}>Upload file(s)</MenuItem>
-            <MenuItem icon="upload" onClick={() => zipInput.current?.click()}>Import ZIP here</MenuItem>
+            <MenuItem icon="upload" onClick={() => setUploading(true)}>Upload folder, files or .zip…</MenuItem>
           </Menu>
         )}
+        {!isFile && <button className="btn btn-primary" onClick={() => setUploading(true)}><Icon name="upload" /> Upload changes</button>}
         {isFile && (
           <>
             <button className="btn" onClick={() => nav(`../edit${q({ ref, path })}`)}><Icon name="edit" /> Edit</button>
@@ -82,13 +69,6 @@ export default function Files() {
             <button className="btn" onClick={() => setPendingUpload([{ action: 'delete', path }])}><Icon name="trash" /> Delete</button>
           </>
         )}
-        <input type="file" multiple hidden ref={fileInput} onChange={(e) => { onUpload(e.target.files); e.target.value = ''; }} />
-        <input type="file" accept=".zip,application/zip" hidden ref={zipInput} onChange={async (e) => {
-          const f = e.target.files[0];
-          e.target.value = '';
-          if (!f) return;
-          try { setPendingUpload(await zipToChanges(f, dir)); } catch (ex) { toast(ex, 'error'); }
-        }} />
       </div>
       <ErrorBox error={items.error} onRetry={items.reload} />
       {items.loading && !data && <Spinner />}
@@ -136,6 +116,15 @@ export default function Files() {
           </div>
           {tab === 'history' ? <FileHistory base={base} refName={ref} path={path} /> : <FileBody base={base} refName={ref} file={data.file} preview={tab === 'preview'} />}
         </div>
+      )}
+      {uploading && (
+        <UploadChanges repo={repo} branch={ref} dir={dir} onClose={() => setUploading(false)}
+          onCommitted={(res) => {
+            setUploading(false);
+            reloadRepo();
+            setSp(Object.fromEntries(Object.entries({ ref: res.branch === repo.defaultBranch ? '' : res.branch, path: dir }).filter(([, v]) => v)));
+            items.reload();
+          }} />
       )}
       {pendingUpload && (
         <CommitDialog

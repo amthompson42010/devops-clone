@@ -115,3 +115,29 @@
 .empty-repo { max-width: 720px; }
 .empty-repo section { background: #fff; box-shadow: var(--shadow); border-radius: 4px; padding: 16px 20px; margin-bottom: 14px; }
 .empty-repo .row { flex-wrap: nowrap; }
+
+/* Upload changes */
+.upload-changes { display: flex; flex-direction: column; gap: 12px; }
+.drop-zone { border: 2px dashed var(--border-strong); border-radius: 6px; padding: 22px; display: flex; flex-direction: column; align-items: center; gap: 10px; text-align: center; color: var(--text-2); background: #faf9f8; transition: background .1s, border-color .1s; }
+.drop-zone.drag { border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
+.upload-summary { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.st-chip.added { background: #dff6dd; color: #0b6a0b; }
+.st-chip.modified { background: #deecf9; color: #005a9e; }
+.upload-list { max-height: 300px; overflow: auto; border: 1px solid var(--border); border-radius: 4px; }
+.upload-row { display: flex; align-items: center; gap: 8px; padding: 4px 10px; border-bottom: 1px solid #f3f2f1; font-size: 13px; }
+.upload-row .mono { flex: 1; }
+.st-same { background: #c8c6c4; }
+
+/* Deployments */
+.deploy-target { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+.deploy-target .az-icon { width: 40px; height: 40px; border-radius: 6px; background: #0078d4; color: #fff; display: inline-flex; align-items: center; justify-content: center; font-weight: 700; }
+.dep-status { font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 10px; text-transform: uppercase; letter-spacing: .03em; white-space: nowrap; }
+.dep-running { background: #deecf9; color: #005a9e; } .dep-succeeded { background: #dff6dd; color: #0b6a0b; }
+.dep-failed { background: #fde7e9; color: #a4262c; } .dep-unknown, .dep-submitted { background: #fff4ce; color: #8a6d00; }
+.deploy-log { background: #1e1e1e; color: #d4d4d4; font-family: var(--mono); font-size: 12px; line-height: 1.6; padding: 10px 12px; border-radius: 4px; max-height: 260px; overflow: auto; white-space: pre-wrap; }
+.deploy-log .t { color: #858585; margin-right: 8px; }
+.deploy-form .field select { width: 100%; }
+.az-account { display: flex; align-items: center; gap: 10px; padding: 10px 12px; background: #f3f9fd; border-radius: 4px; flex-wrap: wrap; }
+.az-setup ol { padding-left: 20px; line-height: 1.7; }
+.dep-row { cursor: pointer; }
+.dep-row.open td { background: #f3f9fd; }

@@ -204,8 +204,7 @@ function HunkRows({ hunk, file, comments, onComment }) {
 }
 const FragmentRow = ({ children }) => <>{children}</>;
 
-export function EmptyRepo({ repo, onInit, onImportZip }) {
-  const zipInput = useRef(null);
+export function EmptyRepo({ repo, onInit, onUpload }) {
   return (
     <div className="empty-repo">
       <h2>{repo.name} is empty. Add some code!</h2>
@@ -225,10 +224,9 @@ export function EmptyRepo({ repo, onInit, onImportZip }) {
         </>
       )}
       <section>
-        <h4>Import code from a .zip</h4>
-        <p className="muted small">Upload a project archive (e.g. GitHub&apos;s &ldquo;Download ZIP&rdquo;). It becomes the first commit on the default branch.</p>
-        <button className="btn" onClick={() => zipInput.current?.click()}><Icon name="upload" /> Import ZIP</button>
-        <input type="file" accept=".zip,application/zip" hidden ref={zipInput} onChange={(e) => { const f = e.target.files[0]; e.target.value = ''; if (f) onImportZip(f); }} />
+        <h4>Upload your code</h4>
+        <p className="muted small">Drag in a project folder or a .zip (e.g. GitHub&apos;s &ldquo;Download ZIP&rdquo;). It becomes the first commit on the default branch.</p>
+        <button className="btn" onClick={onUpload}><Icon name="upload" /> Upload folder or .zip</button>
       </section>
       <section>
         <h4>Initialize main branch</h4>

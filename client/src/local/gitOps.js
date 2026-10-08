@@ -527,3 +527,12 @@ export async function archive(dir, ref) {
   }
   return zipSync(files, { level: 6 });
 }
+
+export async function flatTree(dir, ref) {
+  const oid = await resolve(dir, ref);
+  const rd = makeReader(dir);
+  const flat = await rd.flatten((await rd.commit(oid)).commit.tree);
+  const out = {};
+  for (const [p, info] of flat) if (info.type === 'blob') out[p] = info.oid;
+  return out;
+}

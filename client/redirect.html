@@ -1,0 +1,16 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Signing in…</title>
+  </head>
+  <body style="font-family: 'Segoe UI', sans-serif; color: #605e5c; padding: 24px">
+    <p id="msg">Completing sign-in…</p>
+    <script type="module">
+      import { broadcastResponseToMainFrame } from '@azure/msal-browser/redirect-bridge';
+      broadcastResponseToMainFrame().catch((e) => {
+        document.getElementById('msg').textContent = `Sign-in could not be completed: ${e.message}`;
+      });
+    </script>
+  </body>
+</html>

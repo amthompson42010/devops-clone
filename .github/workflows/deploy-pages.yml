@@ -29,6 +29,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build:pages
+        env:
+          # Optional: Settings > Secrets and variables > Actions > Variables
+          VITE_AZURE_CLIENT_ID: ${{ vars.AZURE_CLIENT_ID }}
+          VITE_AZURE_TENANT: ${{ vars.AZURE_TENANT }}
       - uses: actions/upload-pages-artifact@v4
         with:
           path: client/dist

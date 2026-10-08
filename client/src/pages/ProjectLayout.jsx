@@ -67,6 +67,7 @@ function RepoSubnav({ projectKey }) {
       <NavLink to={`${base}/commits`} className={({ isActive }) => `nav-sub ${isActive || loc.pathname.startsWith(`${base}/commit/`) ? 'active' : ''}`}><Icon name="commit" size={14} /><span>Commits</span></NavLink>
       <NavLink to={`${base}/branches`} className="nav-sub"><Icon name="branch" size={14} /><span>Branches</span></NavLink>
       <NavLink to={`${base}/pulls`} className="nav-sub"><Icon name="pr" size={14} /><span>Pull requests</span></NavLink>
+      <NavLink to={`${base}/deployments`} className="nav-sub"><Icon name="upload" size={14} /><span>Deployments</span></NavLink>
     </>
   );
 }

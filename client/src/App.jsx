@@ -17,6 +17,7 @@ import Branches from './pages/repos/Branches.jsx';
 import PullRequests from './pages/repos/PullRequests.jsx';
 import NewPullRequest from './pages/repos/NewPullRequest.jsx';
 import PullRequestDetail from './pages/repos/PullRequestDetail.jsx';
+import Deployments from './pages/repos/Deployments.jsx';
 import BoardsLayout from './pages/boards/BoardsLayout.jsx';
 import Backlog from './pages/boards/Backlog.jsx';
 import Board from './pages/boards/Board.jsx';
@@ -58,6 +59,7 @@ export default function App() {
             <Route path="pulls" element={<PullRequests />} />
             <Route path="pulls/new" element={<NewPullRequest />} />
             <Route path="pulls/:id" element={<PullRequestDetail />} />
+            <Route path="deployments" element={<Deployments />} />
           </Route>
           <Route path="wiki" element={<WikiLayout />}>
             <Route index element={<WikiHome />} />

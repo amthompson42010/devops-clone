@@ -18,6 +18,8 @@ const projects = (await import('./routes/projects.js')).default;
 const repos = (await import('./routes/repos.js')).default;
 const boards = (await import('./routes/boards.js')).default;
 const wiki = (await import('./routes/wiki.js')).default;
+const deployments = (await import('./routes/deployments.js')).default;
+const relay = (await import('./routes/relay.js')).default;
 
 const app = express();
 app.set('trust proxy', true);
@@ -26,7 +28,7 @@ app.disable('x-powered-by');
 // Git smart HTTP must see the raw request body, so mount it before any body parsers.
 app.use('/git', gitRouter());
 
-app.use(express.json({ limit: '25mb' }));
+app.use(express.json({ limit: '300mb' }));
 
 app.use('/api', (req, res, next) => {
   const decode = (v) => { try { return decodeURIComponent(v || ''); } catch { return v || ''; } };
@@ -42,6 +44,8 @@ app.use('/api', projects);
 app.use('/api/projects/:key/repos', repos);
 app.use('/api/projects/:key/board', boards);
 app.use('/api/projects/:key/wiki', wiki);
+app.use('/api/projects/:key/deployments', deployments);
+app.use('/api/relay', relay);
 app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
 
 // Serve the built client in production

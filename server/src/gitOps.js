@@ -302,3 +302,15 @@ export async function archive(dir, ref) {
   const r = await git(dir, ['archive', '--format=zip', await resolve(dir, ref)]);
   return r.stdout;
 }
+
+/** Every file in a ref as { path: blobSha } (used to diff uploads against stored source). */
+export async function flatTree(dir, ref) {
+  const r = await git(dir, ['ls-tree', '-r', '-z', '--full-tree', await resolve(dir, ref)]);
+  const out = {};
+  for (const l of r.text.split('\0').filter(Boolean)) {
+    const tab = l.indexOf('\t');
+    const [, type, sha] = l.slice(0, tab).split(/\s+/);
+    if (type === 'blob') out[l.slice(tab + 1)] = sha;
+  }
+  return out;
+}

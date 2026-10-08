@@ -11,6 +11,7 @@ import projects from '../../../server/src/routes/projects.js';
 import repos from '../../../server/src/routes/repos.js';
 import boards from '../../../server/src/routes/boards.js';
 import wiki from '../../../server/src/routes/wiki.js';
+import deployments from '../../../server/src/routes/deployments.js';
 import { touchUser } from '../../../server/src/store.js';
 
 export const GIT_FS_NAME = 'devops-clone-git';
@@ -21,6 +22,7 @@ const app = createApp();
 app.use('/api/projects/:key/repos', repos);
 app.use('/api/projects/:key/board', boards);
 app.use('/api/projects/:key/wiki', wiki);
+app.use('/api/projects/:key/deployments', deployments);
 app.use('/api', projects);
 
 function makeRes() {

@@ -39,7 +39,11 @@ export default defineConfig(({ mode }) => {
     plugins: [react(), browserBackend(browser)],
     // Relative asset paths so the build works from any GitHub Pages sub-path (/<repo>/)
     base: browser ? './' : '/',
-    build: { chunkSizeWarningLimit: 2500 },
+    build: {
+      chunkSizeWarningLimit: 2500,
+      // redirect.html is the Microsoft sign-in popup landing page (MSAL redirect bridge)
+      rollupOptions: { input: { main: path.join(here, 'index.html'), redirect: path.join(here, 'redirect.html') } },
+    },
     server: {
       port: 5173,
       fs: { allow: ['..'] },
