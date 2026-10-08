@@ -85,6 +85,10 @@ npm run preview -w client -- --mode browser   # serve the built client/dist
 
 The same route code powers both modes: in the static build, `server/src/routes/*` is bundled into the app with its storage and Git layers swapped for browser implementations (`client/src/local/`).
 
+## Projects and repositories
+
+Every project is self-contained: its own **repository**, **board** and **wiki**. When creating a project you name its repository and choose how it starts — with a README (+ optional .gitignore), by **uploading your code** (a folder or .zip; the upload dialog opens right after), or empty. More repositories can be added from the repo menu (**New repository**).
+
 ## Uploading changes (folder or .zip)
 
 In **Repos ▸ Files**, click **Upload changes** (or drag & drop onto the dialog). You can pick a **folder**, individual **files**, or a **.zip** (a single top-level folder, like GitHub's "Download ZIP", is stripped automatically; `.git`, `node_modules` and OS junk files are skipped).
@@ -106,6 +110,15 @@ How the package reaches Azure (App Service's deployment endpoint doesn't accept 
 |------|----------------|
 | Server (`npm run dev` / `npm start`) | The browser hands the server your Azure token; the server zips the branch with `git archive` and pushes it to the app's Kudu **zipdeploy** API, then polls until it finishes. The token is only kept in memory for that job. |
 | GitHub Pages | The browser uploads the zip to a **staging storage account** in the same resource group (pick one, or one is created automatically, and CORS is enabled for your Pages origin), then calls ARM **OneDeploy** so App Service pulls the package. The staged blob is deleted afterwards. |
+
+### Creating a new App Service from the dialog
+
+In the Deploy dialog, the **Resource group** and **App Service** lists both end with **+ Create new…**:
+
+- **New resource group** — name + region.
+- **New App Service** — globally unique name (checked live against `*.azurewebsites.net`), runtime stack (Node.js, Python, .NET, PHP, Java), and either an existing Linux App Service plan in that resource group or a **new plan** (region + pricing tier: Free F1, Basic, Standard, Premium v3). New apps are Linux, HTTPS-only, FTP disabled, TLS 1.2, with build-on-deploy enabled. If the subscription has never used App Service, the `Microsoft.Web` provider is registered automatically.
+
+Once created it's selected automatically — click **Deploy**.
 
 Your account needs **Contributor** (or Website Contributor + Storage Account Contributor for the Pages path) on the resources.
 

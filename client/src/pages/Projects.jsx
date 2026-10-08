@@ -68,19 +68,27 @@ function CreateProject({ onClose }) {
   const [key, setKey] = useState('');
   const [keyTouched, setKeyTouched] = useState(false);
   const [description, setDescription] = useState('');
+  const [repoName, setRepoName] = useState('');
+  const [repoTouched, setRepoTouched] = useState(false);
+  const [start, setStart] = useState('readme');
+  const [gitignore, setGitignore] = useState('');
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState(null);
   const nav = useNavigate();
   const toast = useToast();
   const effectiveKey = keyTouched ? key : suggestKey(name);
+  const effectiveRepo = repoTouched ? repoName : name.trim().replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '');
   const submit = async (e) => {
     e.preventDefault();
     setBusy(true);
     setErr(null);
     try {
-      const p = await api.post('/api/projects', { name, key: effectiveKey, description });
+      const p = await api.post('/api/projects', {
+        name, key: effectiveKey, description, repoName: effectiveRepo, readme: start === 'readme', gitignore,
+      });
       toast(`Project ${p.name} created`);
-      nav(`/${p.key}`);
+      if (start === 'upload') nav(`/${p.key}/repos/${encodeURIComponent(p.repoName)}/files?upload=1`);
+      else nav(`/${p.key}`);
     } catch (ex) {
       setErr(ex);
       setBusy(false);
@@ -107,11 +115,31 @@ function CreateProject({ onClose }) {
           <span>Description</span>
           <textarea className="input" rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
         </label>
-        <p className="muted small">A Git repository, a board and a wiki space will be created for this project.</p>
+        <fieldset className="fieldset">
+          <legend>Repository</legend>
+          <label className="field">
+            <span>Repository name *</span>
+            <input className="input mono" value={effectiveRepo} onChange={(e) => { setRepoTouched(true); setRepoName(e.target.value.replace(/\s/g, '-')); }} />
+          </label>
+          <div className="field">
+            <span>Start with</span>
+            <label className="radio"><input type="radio" checked={start === 'readme'} onChange={() => setStart('readme')} /> A README</label>
+            <label className="radio"><input type="radio" checked={start === 'upload'} onChange={() => setStart('upload')} /> My code: upload a folder or .zip next</label>
+            <label className="radio"><input type="radio" checked={start === 'empty'} onChange={() => setStart('empty')} /> An empty repository</label>
+          </div>
+          {start === 'readme' && (
+            <label className="field"><span>.gitignore</span>
+              <select className="input" value={gitignore} onChange={(e) => setGitignore(e.target.value)}>
+                <option value="">None</option><option>Node</option><option>Python</option><option>VisualStudio</option><option>Java</option>
+              </select>
+            </label>
+          )}
+        </fieldset>
+        <p className="muted small">The project also gets its own board and wiki space. You can add more repositories later.</p>
         <ErrorBox error={err} />
         <div className="form-actions">
           <button type="button" className="btn" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" disabled={busy || !name.trim() || effectiveKey.length < 2}>{busy ? 'Creating…' : 'Create'}</button>
+          <button className="btn btn-primary" disabled={busy || !name.trim() || effectiveKey.length < 2 || !effectiveRepo}>{busy ? 'Creating…' : 'Create'}</button>
         </div>
       </form>
     </Modal>

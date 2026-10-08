@@ -221,3 +221,5 @@ select.input { padding-right: 4px; }
 .progress span { display: block; height: 100%; background: #36b37e; }
 .prose li[data-type="taskItem"]:not(:has(> label))::before { content: "☐"; color: var(--a-subtle); margin-right: 2px; }
 .prose li[data-type="taskItem"][data-checked="true"]:not(:has(> label))::before { content: "☑"; color: var(--a-blue); }
+.fieldset { border: 1px solid var(--border); border-radius: 4px; padding: 10px 14px 14px; margin: 0; display: flex; flex-direction: column; gap: 12px; }
+.fieldset legend { font-weight: 600; font-size: 13px; padding: 0 4px; }

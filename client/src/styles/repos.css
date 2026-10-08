@@ -141,3 +141,7 @@
 .az-setup ol { padding-left: 20px; line-height: 1.7; }
 .dep-row { cursor: pointer; }
 .dep-row.open td { background: #f3f9fd; }
+.create-panel { border: 1px solid #c7e0f4; background: #f8fbfe; border-radius: 4px; padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
+.create-panel-head { display: flex; align-items: center; gap: 6px; color: #005a9e; }
+.nowrap-row { flex-wrap: nowrap; }
+.text-danger { color: var(--danger); } .text-ok { color: var(--success); }

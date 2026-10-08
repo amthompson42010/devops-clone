@@ -22,7 +22,11 @@ export default function Files() {
   const items = useAsync(() => (repo.empty ? null : api.get(`${base}/items${q({ ref, path })}`)), [base, ref, path, repo.empty]);
   const [tab, setTab] = useState('contents');
   const [pendingUpload, setPendingUpload] = useState(null);
-  const [uploading, setUploading] = useState(false);
+  const [uploading, setUploading] = useState(sp.get('upload') === '1');
+  const closeUpload = () => {
+    setUploading(false);
+    if (sp.get('upload')) setSp((p) => { const n = new URLSearchParams(p); n.delete('upload'); return n; }, { replace: true });
+  };
 
   const linkFor = (p, r = ref) => `?${new URLSearchParams({ ...(r !== repo.defaultBranch ? { ref: r } : {}), ...(p ? { path: p } : {}) })}`;
   const setRef = (r) => setSp(Object.fromEntries(Object.entries({ ref: r === repo.defaultBranch ? '' : r, path }).filter(([, v]) => v)));
@@ -38,8 +42,8 @@ export default function Files() {
       <main className="page">
         <EmptyRepo repo={repo} onInit={init} onUpload={() => setUploading(true)} />
         {uploading && (
-          <UploadChanges repo={repo} branch={repo.defaultBranch || 'main'} onClose={() => setUploading(false)}
-            onCommitted={() => { setUploading(false); reloadRepo(); }} />
+          <UploadChanges repo={repo} branch={repo.defaultBranch || 'main'} onClose={closeUpload}
+            onCommitted={() => { closeUpload(); reloadRepo(); }} />
         )}
       </main>
     );
@@ -118,7 +122,7 @@ export default function Files() {
         </div>
       )}
       {uploading && (
-        <UploadChanges repo={repo} branch={ref} dir={dir} onClose={() => setUploading(false)}
+        <UploadChanges repo={repo} branch={ref} dir={dir} onClose={closeUpload}
           onCommitted={(res) => {
             setUploading(false);
             reloadRepo();

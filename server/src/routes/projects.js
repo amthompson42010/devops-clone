@@ -3,7 +3,9 @@ import { getJson, updateJson, deletePrefix } from '../blob.js';
 import {
   PROJECTS, HttpError, listProjects, requireProject, listUsers, reposBlob, boardBlob, wikiIndexBlob, now,
 } from '../store.js';
-import { createRepo, deleteRepo } from '../gitStore.js';
+import { createRepo, deleteRepo, withRepo } from '../gitStore.js';
+import * as ops from '../gitOps.js';
+import { GITIGNORES } from './repos.js';
 import { defaultBoard } from './boards.js';
 import { createPage, HOME_TEMPLATE } from './wiki.js';
 
@@ -22,6 +24,12 @@ r.post('/projects', async (req, res) => {
   const description = String(req.body.description || '').trim();
   if (!name) throw new HttpError(400, 'Project name is required');
   if (!/^[A-Z][A-Z0-9]{1,9}$/.test(key)) throw new HttpError(400, 'Key must be 2-10 letters/digits starting with a letter');
+  // Every project gets its own repository (named after the project unless a name is given)
+  const repoName = String(req.body.repoName || '').trim()
+    || name.replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || key;
+  if (!/^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/.test(repoName) || repoName.toLowerCase().endsWith('.git')) {
+    throw new HttpError(400, 'Repository names may contain letters, digits, ".", "_" and "-"');
+  }
 
   const { result: project } = await updateJson(PROJECTS, [], (list) => {
     if (list.some((p) => p.key === key)) throw new HttpError(409, `Key ${key} is already in use`);
@@ -34,12 +42,15 @@ r.post('/projects', async (req, res) => {
   await updateJson(boardBlob(key), defaultBoard(), () => {});
   await createPage(key, { title: `${name} Home`, content: HOME_TEMPLATE(name, description), parentId: null }, req.user);
 
-  // Like Azure DevOps, every project starts with a repo named after the project
-  const repoName = name.replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^-+|-+$/g, '') || key;
   await createRepo(key, repoName);
   await updateJson(reposBlob(key), [], (list) => { list.push({ name: repoName, createdAt: now(), createdBy: req.user.name }); });
+  if (req.body.readme) {
+    const changes = [{ path: 'README.md', content: `# ${name}\n\n${description || 'Describe your project here.'}\n` }];
+    if (GITIGNORES[req.body.gitignore]) changes.push({ path: '.gitignore', content: GITIGNORES[req.body.gitignore] });
+    await withRepo(key, repoName, (dir) => ops.commitFiles(dir, { branch: 'main', message: 'Initial commit', changes, user: req.user }), { write: true });
+  }
 
-  res.status(201).json(project);
+  res.status(201).json({ ...project, repoName });
 });
 
 r.get('/projects/:key', async (req, res) => {

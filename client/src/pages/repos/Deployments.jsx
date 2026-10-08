@@ -5,12 +5,14 @@ import { useAsync, timeAgo, fmtDateTime, shortSha, copyText } from '../../util.j
 import { Modal, Spinner, ErrorBox, Empty, Avatar, useToast } from '../../components/ui.jsx';
 import Icon from '../../components/Icon.jsx';
 import { BranchPicker } from './repoBits.jsx';
+import { NewResourceGroup, NewAppService } from './CreateAzureResources.jsx';
 import { getAzureConfig, setAzureConfig, redirectUri, currentAccount, signIn, signOut } from '../../azure/auth.js';
 import {
   listTenants, listSubscriptions, listResourceGroups, listWebApps, listStorageAccounts,
   ensureBuildSetting, deployViaRelay, deployViaStorage, createStagingAccount,
 } from '../../azure/arm.js';
 
+const NEW = '__new';
 const STATUS_LABEL = { running: 'Running', succeeded: 'Succeeded', failed: 'Failed', unknown: 'Unknown' };
 
 export default function Deployments() {
@@ -189,13 +191,14 @@ function DeployDialog({ project, repo, saved, onClose }) {
   }, [account]);
   useEffect(() => { if (account && tenantId) load('subs', () => listSubscriptions(tenantId)).then((s) => setSubs(s || [])); }, [account, tenantId, load]);
   useEffect(() => { setRgs(null); if (sub) load('rgs', () => listResourceGroups(sub, tenantId)).then((r) => setRgs(r || [])); }, [sub, tenantId, load]);
+  const [appsVersion, setAppsVersion] = useState(0);
   useEffect(() => {
     setApps(null);
     setAccounts(null);
-    if (!sub || !rg) return;
+    if (!sub || !rg || rg === NEW) return;
     load('apps', () => listWebApps(sub, rg, tenantId)).then((a) => setApps(a || []));
     if (BROWSER_MODE) load('accounts', () => listStorageAccounts(sub, rg, tenantId)).then((a) => setAccounts(a || []));
-  }, [sub, rg, tenantId, load]);
+  }, [sub, rg, tenantId, load, appsVersion]);
 
   const site = apps?.find((a) => a.id === siteId) || null;
   const subscription = subs?.find((s) => s.id === sub) || null;
@@ -254,7 +257,7 @@ function DeployDialog({ project, repo, saved, onClose }) {
     }
   };
 
-  const canDeploy = account && site && ref && !running && (!BROWSER_MODE || accounts);
+  const canDeploy = account && site && siteId !== NEW && ref && !running && (!BROWSER_MODE || accounts);
 
   return (
     <Modal title="Deploy to Azure App Service" onClose={running ? undefined : onClose} width={720}
@@ -292,11 +295,24 @@ function DeployDialog({ project, repo, saved, onClose }) {
             <Select label="Subscription" value={sub} onChange={(v) => { setSub(v); setRg(''); setSiteId(''); }} placeholder="Select a subscription"
               options={(subs || []).map((s) => ({ value: s.id, label: s.name }))} loading={loading.subs} disabled={running} />
             <Select label="Resource group" value={rg} onChange={(v) => { setRg(v); setSiteId(''); }} placeholder={sub ? 'Select a resource group' : 'Select a subscription first'}
-              options={(rgs || []).map((g) => ({ value: g.name, label: `${g.name} (${g.location})` }))} loading={loading.rgs} disabled={running || !sub} />
+              options={[...(rgs || []).map((g) => ({ value: g.name, label: `${g.name} (${g.location})` })), ...(sub && rgs ? [{ value: NEW, label: '+ Create new resource group…' }] : [])]}
+              loading={loading.rgs} disabled={running || !sub} />
           </div>
-          <Select label="App Service" value={siteId} onChange={setSiteId} placeholder={rg ? (apps && !apps.length ? 'No App Services in this resource group' : 'Select an App Service') : 'Select a resource group first'}
-            options={(apps || []).map((a) => ({ value: a.id, label: `${a.name} — ${a.host || ''} ${a.state && a.state !== 'Running' ? `(${a.state})` : ''}${/linux/i.test(a.kind) ? ' · Linux' : ' · Windows'}` }))}
-            loading={loading.apps} disabled={running || !rg} />
+          {rg === NEW && (
+            <NewResourceGroup sub={sub} tenantId={tenantId} existing={rgs || []}
+              onCancel={() => setRg('')}
+              onCreated={(g) => { setRgs((l) => [...(l || []), g].sort((a, b) => a.name.localeCompare(b.name))); setRg(g.name); setSiteId(NEW); }} />
+          )}
+          {rg !== NEW && (
+            <Select label="App Service" value={siteId} onChange={setSiteId} placeholder={rg ? (apps && !apps.length ? 'No App Services yet — create one below' : 'Select an App Service') : 'Select a resource group first'}
+              options={[...(apps || []).map((a) => ({ value: a.id, label: `${a.name} — ${a.host || ''} ${a.state && a.state !== 'Running' ? `(${a.state})` : ''}${/linux/i.test(a.kind) ? ' · Linux' : ' · Windows'}` })), ...(rg && apps ? [{ value: NEW, label: '+ Create new App Service…' }] : [])]}
+              loading={loading.apps} disabled={running || !rg} />
+          )}
+          {rg && rg !== NEW && siteId === NEW && (
+            <NewAppService sub={sub} rg={rg} rgLocation={rgs?.find((g) => g.name === rg)?.location} tenantId={tenantId} repoName={repo.name}
+              onCancel={() => setSiteId('')}
+              onCreated={(id) => { setSiteId(id); setAppsVersion((v) => v + 1); toast('App Service created'); }} />
+          )}
           {BROWSER_MODE && rg && (
             <Select label="Staging storage account (holds the package while App Service pulls it)" value={storageId} onChange={setStorageId}
               placeholder="Create a new one automatically"

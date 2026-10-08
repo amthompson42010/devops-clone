@@ -21,7 +21,7 @@ async function requireRepo(req) {
 const READ = (req, fn) => requireRepo(req).then(({ key, repo }) => withRepo(key, repo.name, fn));
 const WRITE = (req, fn) => requireRepo(req).then(({ key, repo }) => withRepo(key, repo.name, fn, { write: true }));
 
-const GITIGNORES = {
+export const GITIGNORES = {
   Node: 'node_modules/\ndist/\n.env\nnpm-debug.log*\n',
   Python: '__pycache__/\n*.py[cod]\n.venv/\nvenv/\n.env\ndist/\nbuild/\n*.egg-info/\n',
   VisualStudio: 'bin/\nobj/\n.vs/\n*.user\n*.suo\npackages/\nTestResults/\n',

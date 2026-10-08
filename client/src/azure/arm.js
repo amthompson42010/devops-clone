@@ -205,3 +205,108 @@ export async function deployViaStorage({ projectKey, repo, ref, site, account, t
   }
   return { status };
 }
+
+/* ------------------------------------------------- create new App Service */
+
+export const RUNTIMES = [
+  { value: 'NODE|22-lts', label: 'Node.js 22 LTS' },
+  { value: 'NODE|20-lts', label: 'Node.js 20 LTS' },
+  { value: 'PYTHON|3.12', label: 'Python 3.12' },
+  { value: 'PYTHON|3.11', label: 'Python 3.11' },
+  { value: 'DOTNETCORE|8.0', label: '.NET 8 (LTS)' },
+  { value: 'PHP|8.3', label: 'PHP 8.3' },
+  { value: 'JAVA|21-java21', label: 'Java 21 (Java SE)' },
+  { value: 'JAVA|17-java17', label: 'Java 17 (Java SE)' },
+];
+
+export const PLAN_SKUS = [
+  { value: 'F1', tier: 'Free', label: 'Free F1 — 60 CPU min/day, for trying things out' },
+  { value: 'B1', tier: 'Basic', label: 'Basic B1 — 1 core, 1.75 GB' },
+  { value: 'B2', tier: 'Basic', label: 'Basic B2 — 2 cores, 3.5 GB' },
+  { value: 'S1', tier: 'Standard', label: 'Standard S1 — slots & autoscale' },
+  { value: 'P0v3', tier: 'Premium0V3', label: 'Premium P0v3 — production' },
+  { value: 'P1v3', tier: 'PremiumV3', label: 'Premium P1v3 — production, 2 cores' },
+];
+
+const toRegionName = (display) => display.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+/** Make sure the subscription can create App Service resources; returns the regions where it's offered. */
+export async function prepareWebProvider(sub, tenantId, log = () => {}) {
+  const path = `/subscriptions/${sub}/providers/Microsoft.Web`;
+  let { data } = await arm('GET', path, { apiVersion: '2021-04-01', tenantId });
+  if (data.registrationState !== 'Registered') {
+    log('Registering the Microsoft.Web resource provider on this subscription (one-time)…');
+    await arm('POST', `${path}/register`, { apiVersion: '2021-04-01', tenantId });
+    for (let i = 0; i < 40 && data.registrationState !== 'Registered'; i++) {
+      await new Promise((r) => setTimeout(r, 3000));
+      ({ data } = await arm('GET', path, { apiVersion: '2021-04-01', tenantId }));
+    }
+  }
+  const rt = (data.resourceTypes || []).find((t) => t.resourceType.toLowerCase() === 'sites');
+  return (rt?.locations || []).map((l) => ({ name: toRegionName(l), label: l })).sort((a, b) => a.label.localeCompare(b.label));
+}
+
+export async function checkAppName(sub, name, tenantId) {
+  const { data } = await arm('POST', `/subscriptions/${sub}/providers/Microsoft.Web/checknameavailability`, {
+    apiVersion: V.web, tenantId, body: { name, type: 'Microsoft.Web/sites' },
+  });
+  return { available: !!data.nameAvailable, message: data.message || data.reason || '' };
+}
+
+export const listPlans = (sub, rg, tenantId) => armList(`/subscriptions/${sub}/resourceGroups/${rg}/providers/Microsoft.Web/serverfarms`, V.web, tenantId)
+  .then((l) => l.map((p) => ({
+    id: p.id, name: p.name, location: p.location, linux: !!p.properties?.reserved, sku: p.sku?.name, sites: p.properties?.numberOfSites ?? 0,
+  })).sort((a, b) => a.name.localeCompare(b.name)));
+
+export async function createResourceGroup(sub, name, location, tenantId) {
+  await arm('PUT', `/subscriptions/${sub}/resourcegroups/${encodeURIComponent(name)}`, { apiVersion: V.rg, tenantId, body: { location, tags: { createdBy: 'devops-clone' } } });
+  return { name, location };
+}
+
+/**
+ * Create a Linux App Service (and optionally a new App Service plan).
+ * opts: { sub, rg, name, location, runtime, planId? , newPlan?: { name, sku, tier } }
+ */
+export async function createWebApp({ sub, rg, name, location, runtime, planId, newPlan, alwaysOn = false, tenantId, log = () => {} }) {
+  let serverFarmId = planId;
+  if (!serverFarmId) {
+    const id = `/subscriptions/${sub}/resourceGroups/${rg}/providers/Microsoft.Web/serverfarms/${newPlan.name}`;
+    log(`Creating App Service plan ${newPlan.name} (${newPlan.sku}, Linux) in ${location}…`);
+    await arm('PUT', id, {
+      apiVersion: V.web, tenantId,
+      body: { location, kind: 'linux', sku: { name: newPlan.sku, tier: newPlan.tier }, properties: { reserved: true }, tags: { createdBy: 'devops-clone' } },
+    });
+    serverFarmId = id;
+  }
+  const siteId = `/subscriptions/${sub}/resourceGroups/${rg}/providers/Microsoft.Web/sites/${name}`;
+  log(`Creating App Service ${name} (${runtime})…`);
+  await arm('PUT', siteId, {
+    apiVersion: V.web, tenantId,
+    body: {
+      location,
+      kind: 'app,linux',
+      tags: { createdBy: 'devops-clone' },
+      properties: {
+        serverFarmId,
+        httpsOnly: true,
+        siteConfig: {
+          linuxFxVersion: runtime,
+          alwaysOn, // not allowed on Free (F1) plans
+          ftpsState: 'Disabled',
+          minTlsVersion: '1.2',
+          http20Enabled: true,
+          appSettings: [{ name: 'SCM_DO_BUILD_DURING_DEPLOYMENT', value: 'true' }],
+        },
+      },
+    },
+  });
+  for (let i = 0; i < 40; i++) {
+    const { data } = await arm('GET', siteId, { apiVersion: V.web, tenantId });
+    if (data?.properties?.state === 'Running' || data?.properties?.provisioningState === 'Succeeded') {
+      log(`App Service ready at https://${data.properties.defaultHostName}`);
+      return siteId;
+    }
+    await new Promise((r) => setTimeout(r, 3000));
+  }
+  return siteId;
+}
