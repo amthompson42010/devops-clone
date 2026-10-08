@@ -1,5 +1,7 @@
 # Builds the browser-only version of the app and publishes it to GitHub Pages.
-# One-time setup: repo Settings > Pages > Build and deployment > Source: "GitHub Actions".
+#
+# ONE-TIME SETUP (required, otherwise the deploy job fails with "Not Found"):
+#   GitHub repo > Settings > Pages > Build and deployment > Source: "GitHub Actions"
 name: Deploy to GitHub Pages
 
 on:
@@ -18,23 +20,22 @@ concurrency:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - run: npm ci
       - run: npm run build:pages
-      - uses: actions/configure-pages@v5
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v4
         with:
           path: client/dist
 
   deploy:
     needs: build
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
