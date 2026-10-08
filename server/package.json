@@ -1,0 +1,16 @@
+{
+  "name": "devops-clone-server",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "dev": "node --watch-path=src src/index.js",
+    "start": "node src/index.js"
+  },
+  "dependencies": {
+    "@azure/storage-blob": "^12.26.0",
+    "dotenv": "^16.4.7",
+    "express": "^5.1.0"
+  }
+}
